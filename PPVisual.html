@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PP — Sistema Inteligente de Gestión de Entregas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+
+:root {
+  /* Superficie */
+  --bg:       #070a0f;
+  --s1:       #0d1117;
+  --s2:       #131922;
+  --s3:       #1b2232;
+  --s4:       #222c3c;
+  --border:   #253048;
+  --border2:  #35446a;
+
+  /* Texto */
+  --t1: #dde6f5;
+  --t2: #7e8fa8;
+  --t3: #44566e;
+
+  /* Prioridades — de PPFormularios.py Prioridad enum */
+  --rojo:   #f05252;
+  --rojo2:  #7f1d1d;
+  --azul:   #4da6ff;
+  --azul2:  #1e3a5f;
+  --verde:  #34d399;
+  --verde2: #064e3b;
+
+  /* Acento sistema */
+  --acc:    #4da6ff;
+  --acc2:   #1a56db;
+  --amber:  #fbbf24;
+  --purple: #a78bfa;
+  --cyan:   #22d3ee;
+  --orange: #fb923c;
+
+  /* Tipografía */
+  --font:  'Syne', sans-serif;
+  --mono:  'JetBrains Mono', monospace;
+
+  --r1: 6px;
+  --r2: 10px;
+  --r3: 14px;
+}
+
+/* ═══════════════ RESET ═══════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--font);
+  font-size: 14px;
+}
+
+/* ═══════════════ LAYOUT ═══════════════ */
+.app {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  grid-template-columns: 200px 1fr;
+  height: 100vh;
+}
+
+/* ═══════════════ HEADER ═══════════════ */
+header {
+  grid-column: 1 / -1;
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 14px;
+  position: relative;
+  z-index: 10;
+}
+header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--acc) 0%, transparent 60%);
+  opacity: 0.4;
+}
+.logo {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--acc);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-sep { color: var(--t3); font-weight: 300; }
+.logo-sub { color: var(--t3); font-weight: 400; font-size: 11px; letter-spacing: 0.04em; }
+
+.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.hdr-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 99px; padding: 3px 12px 3px 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--t2);
+}
+.hdr-pill b { color: var(--t1); }
+.hdr-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--border2); flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+.hdr-dot.on { background: var(--verde); box-shadow: 0 0 8px var(--verde); }
+
+/* ═══════════════ SIDEBAR ═══════════════ */
+aside {
+  background: var(--s1);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px 0 20px;
+}
+.nav-sec {
+  padding: 16px 14px 5px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--t3);
+}
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 14px;
+  font-size: 12.5px; color: var(--t2);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all .15s;
+  user-select: none;
+  position: relative;
+}
+.nav-item:hover { background: var(--s2); color: var(--t1); }
+.nav-item.active {
+  background: var(--s2);
+  color: var(--acc);
+  border-left-color: var(--acc);
+}
+.nav-item.locked { opacity: .3; pointer-events: none; }
+.nav-icon { font-size: 15px; width: 17px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--acc2);
+  color: var(--acc);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 99px;
+}
+
+/* ═══════════════ MAIN ═══════════════ */
+main { overflow-y: auto; background: var(--bg); }
+.page { display: none; padding: 22px 24px; }
+.page.active { display: block; }
+
+/* ═══════════════ PAGE HEADER ═══════════════ */
+.ph { margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.ph-title { font-size: 20px; font-weight: 800; margin-bottom: 3px; letter-spacing: -.01em; }
+.ph-sub { color: var(--t3); font-size: 12px; }
+.ph-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ═══════════════ CARD ═══════════════ */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r3);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.card-hdr {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--t3);
+}
+.card-hdr::before {
+  content: '';
+  display: block;
+  width: 3px; height: 14px;
+  border-radius: 2px;
+  background: var(--acc);
+  flex-shrink: 0;
+}
+.card-hdr.green::before { background: var(--verde); }
+.card-hdr.amber::before { background: var(--amber); }
+.card-hdr.purple::before { background: var(--purple); }
+.card-hdr.red::before { background: var(--rojo); }
+.card-hdr.cyan::before { background: var(--cyan); }
+.card-hdr.orange::before { background: var(--orange); }
+
+/* ═══════════════ GRID ═══════════════ */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+/* ═══════════════ FORM ═══════════════ */
+.fr { margin-bottom: 13px; }
+.fr2 { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-bottom: 13px; }
+label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--t2);
+  margin-bottom: 5px;
+  letter-spacing: .04em;
+}
+select, input[type=text], input[type=number] {
+  width: 100%;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r1);
+  color: var(--t1);
+  padding: 8px 11px;
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color .15s;
+  appearance: none;
+}
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2344566e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+select:focus, input:focus { border-color: var(--acc); background: var(--s3); }
+select option { background: var(--s2); }
+
+/* ═══════════════ BUTTONS ═══════════════ */
+.btn {
+  padding: 8px 18px; border-radius: var(--r1);
+  border: none; font-family: var(--font);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--acc); color: #fff; }
+.btn-primary:hover { background: var(--acc2); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-ghost { background: var(--s2); border: 1px solid var(--border2); color: var(--t1); }
+.btn-ghost:hover { background: var(--s3); }
+.btn-success { background: var(--verde2); color: var(--verde); border: 1px solid rgba(52,211,153,.25); }
+.btn-success:hover { filter: brightness(1.1); }
+.btn-danger { background: var(--rojo2); color: var(--rojo); border: 1px solid rgba(240,82,82,.25); }
+.btn-row { display: flex; gap: 9px; margin-top: 16px; flex-wrap: wrap; }
+
+/* ═══════════════ BADGE ═══════════════ */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 99px;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+}
+.b-red   { background: rgba(240,82,82,.12);  color: var(--rojo);  border: 1px solid rgba(240,82,82,.3); }
+.b-blue  { background: rgba(77,166,255,.12); color: var(--azul);  border: 1px solid rgba(77,166,255,.3); }
+.b-green { background: rgba(52,211,153,.12); color: var(--verde); border: 1px solid rgba(52,211,153,.3); }
+.b-amber { background: rgba(251,191,36,.12); color: var(--amber); border: 1px solid rgba(251,191,36,.3); }
+.b-gray  { background: rgba(126,143,168,.1); color: var(--t2);    border: 1px solid var(--border); }
+.b-purple{ background: rgba(167,139,250,.12);color: var(--purple);border: 1px solid rgba(167,139,250,.3); }
+
+/* ═══════════════ STAT CARD ═══════════════ */
+.stat {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 14px 16px;
+}
+.stat-lbl { font-family: var(--mono); font-size: 10px; color: var(--t3); letter-spacing: .07em; margin-bottom: 7px; text-transform: uppercase; }
+.stat-val { font-size: 26px; font-weight: 800; color: var(--t1); font-variant-numeric: tabular-nums; }
+.stat-sub { font-size: 11px; color: var(--t3); margin-top: 3px; }
+
+/* ═══════════════ TABLE ═══════════════ */
+.tw { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th {
+  text-align: left; padding: 7px 11px;
+  font-family: var(--mono); font-size: 10px; color: var(--t3);
+  border-bottom: 1px solid var(--border); letter-spacing: .06em;
+  font-weight: 500; background: var(--s2); white-space: nowrap;
+}
+td { padding: 9px 11px; border-bottom: 1px solid var(--border); color: var(--t2); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); color: var(--t1); }
+td.mono { font-family: var(--mono); font-size: 11.5px; color: var(--acc); }
+
+/* ═══════════════ VEHICLE CARD ═══════════════ */
+.v-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r3); padding: 14px; position: relative; overflow: hidden;
+}
+.v-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.vc-moto::before   { background: var(--azul); }
+.vc-chica::before  { background: var(--purple); }
+.vc-grande::before { background: var(--amber); }
+.v-name  { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.v-type  { font-family: var(--mono); font-size: 10px; color: var(--t3); margin-bottom: 12px; }
+.v-row   { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 11.5px; }
+.v-row:last-of-type { border: none; }
+.v-row span:first-child { color: var(--t3); }
+.v-row span:last-child  { font-family: var(--mono); color: var(--t1); }
+.cap-bar { height: 3px; background: var(--s4); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.cap-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+
+/* ═══════════════ CANVAS ═══════════════ */
+#canvas-main {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r2); width: 100%; cursor: crosshair;
+  display: block;
+}
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.leg-item { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--t2); }
+.leg-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.leg-line { width: 18px; height: 2px; flex-shrink: 0; }
+
+/* ═══════════════ TABS ═══════════════ */
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+.tab  {
+  padding: 9px 18px; font-size: 12.5px; cursor: pointer;
+  color: var(--t3); border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: all .15s; font-weight: 500;
+}
+.tab.active { color: var(--acc); border-bottom-color: var(--acc); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ═══════════════ WEEK TABLE ═══════════════ */
+.week-table th { background: var(--s2); }
+
+/* ═══════════════ ALERT ═══════════════ */
+.alert {
+  padding: 11px 15px; border-radius: var(--r1);
+  font-size: 12.5px; border-left: 3px solid; margin-bottom: 12px;
+}
+.al-info    { background: rgba(77,166,255,.07);  border-color: var(--acc);   color: var(--t2); }
+.al-success { background: rgba(52,211,153,.07);  border-color: var(--verde); color: var(--t2); }
+.al-warn    { background: rgba(251,191,36,.07);  border-color: var(--amber); color: var(--t2); }
+.al-error   { background: rgba(240,82,82,.07);   border-color: var(--rojo);  color: var(--t2); }
+
+/* ═══════════════ TOOLTIP ═══════════════ */
+.tooltip {
+  position: fixed; background: var(--s3);
+  border: 1px solid var(--border2); border-radius: var(--r1);
+  padding: 7px 11px; font-family: var(--mono); font-size: 11px;
+  pointer-events: none; z-index: 999; display: none;
+  white-space: nowrap;
+}
+
+/* ═══════════════ LOADING ═══════════════ */
+.running { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+/* ═══════════════ SCROLLBAR ═══════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ═══════════════ DIM INFO BOX ═══════════════ */
+.dim-box {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r1); padding: 12px 14px;
+  font-family: var(--mono); font-size: 12px;
+}
+.dim-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.dim-row:last-child { border: none; }
+.dim-row span:first-child { color: var(--t3); }
+.dim-row span:last-child  { color: var(--t1); }
+
+/* ═══════════════ PROGRESS ═══════════════ */
+.prog-bar { height: 5px; background: var(--s4); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+
+/* ═══════════════ ACO History chart area ═══════════════ */
+.chart-area { position: relative; height: 200px; }
+
+/* ═══════════════ Validation error ═══════════════ */
+.field-err { color: var(--rojo); font-family: var(--mono); font-size: 10.5px; margin-top: 4px; display: none; }
+.input-err { border-color: var(--rojo) !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header>
+  <div class="logo">
+    PP
+    <span class="logo-sep">//</span>
+    <span class="logo-sub">Sistema de Gestión y Optimización de Entregas</span>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-pill">
+      <span class="hdr-dot" id="hdr-dot"></span>
+      Día: <b id="hdr-day">—</b>
+    </div>
+    <div class="hdr-pill" id="hdr-status-pill">
+      <span id="hdr-status">Sin iniciar</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside>
+  <div class="nav-sec">Configuración</div>
+  <div class="nav-item active" onclick="showPage('inicio')" id="nav-inicio">
+    <span class="nav-icon"> </span> Día de trabajo
+  </div>
+
+  <div class="nav-sec">Operaciones</div>
+  <div class="nav-item locked" onclick="showPage('paquetes')" id="nav-paquetes">
+    <span class="nav-icon</span> Paquetes
+    <span class="nav-badge" id="badge-pkg" style="display:none">0</span>
+  </div>
+  <div class="nav-item locked" onclick="showPage('vehiculos')" id="nav-vehiculos">
+    <span class="nav-icon"> </span> Vehículos
+  </div>
+  <div class="nav-item locked" onclick="showPage('optimizar')" id="nav-optimizar">
+    <span class="nav-icon"> </span> Optimizar
+  </div>
+
+  <div class="nav-sec">Reportes</div>
+  <div class="nav-item locked" onclick="showPage('tablas')" id="nav-tablas">
+    <span class="nav-icon"> </span> Tablas del día
+  </div>
+  <div class="nav-item locked" onclick="showPage('plano')" id="nav-plano">
+    <span class="nav-icon"> </span> Plano cartesiano
+  </div>
+  <div class="nav-item" onclick="showPage('semanal')" id="nav-semanal">
+    <span class="nav-icon"> </span> Resumen semanal
+  </div>
+</aside>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main>
+
+<!-- ════════ INICIO ════════ -->
+<div class="page active" id="page-inicio">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Configurar día de trabajo</div>
+      <div class="ph-sub">Selecciona el día y la modalidad de operación antes de comenzar.</div>
+    </div>
+  </div>
+
+  <div style="max-width:440px;">
+    <div class="card">
+      <div class="card-hdr">Configuración del día</div>
+
+      <div class="fr">
+        <label>Día de la semana</label>
+        <select id="sel-dia">
+          <option value="">— Seleccionar —</option>
+          <option>Lunes</option><option>Martes</option><option>Miércoles</option>
+          <option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option>
+        </select>
+        <div class="field-err" id="err-dia">Selecciona un día válido.</div>
+      </div>
+
+      <div class="fr">
+        <label>Actividad del día</label>
+        <select id="sel-actividad">
+          <option value="">— Seleccionar —</option>
+          <!-- Valores exactos de Actividad enum en PPFormularios.py -->
+          <option value="paquetes">Registrar paquetes</option>
+          <option value="entregas">Realizar entregas</option>
+          <option value="ambas">Ambas actividades</option>
+        </select>
+        <div class="field-err" id="err-act">Selecciona una actividad.</div>
+      </div>
+
+      <div class="alert al-info" style="margin-bottom:0;font-size:12px;">
+        Los paquetes conservados del día anterior pasan automáticamente al nuevo día.
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="iniciarDia()">Iniciar día →</button>
+        <button class="btn btn-danger" onclick="borrarTodo()" id="btn-borrar" style="display:none;">  Borrar todo</button>
+      </div>
+    </div>
+
+    <div id="alert-inicio" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ════════ PAQUETES ════════ -->
+<div class="page" id="page-paquetes">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Registro de paquetes</div>
+      <div class="ph-sub">Captura nuevos paquetes — ID generado automáticamente.</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-hdr green">Nuevo paquete</div>
+
+        <div class="fr">
+          <label>Número de paquete</label>
+          <input type="text" id="pkg-id" readonly style="color:var(--acc);font-family:var(--mono);font-weight:600;">
+        </div>
+
+        <div class="fr">
+          <!-- Tipos de PPFormularios.py TipoPaquete enum -->
+          <label>Tipo de paquete</label>
+          <select id="pkg-tipo" onchange="onTipoChange()">
+            <option value="">— Seleccionar —</option>
+            <option value="bolsa">Bolsa pequeña</option>
+            <option value="caja-chica">Caja chica</option>
+            <option value="caja-mediana">Caja mediana</option>
+            <option value="caja-grande">Caja grande</option>
+          </select>
+          <div class="field-err" id="err-tipo">Selecciona un tipo.</div>
+        </div>
+
+        <div class="fr2">
+          <div>
+            <label>Peso (kg)</label>
+            <input type="number" id="pkg-peso" min="0.1" step="0.1" placeholder="0.0" oninput="validarPeso()">
+            <div class="field-err" id="err-peso">Peso inválido.</div>
+          </div>
+          <div>
+            <!-- Prioridades de PPFormularios.py Prioridad enum -->
+            <label>Prioridad</label>
+            <select id="pkg-prioridad">
+              <option value="">— —</option>
+              <option value="rojo"> Rojo — inmediata</option>
+              <option value="azul"> Azul — 1–3 días</option>
+              <option value="verde"> Verde — 1–7 días</option>
+            </select>
+            <div class="field-err" id="err-prio">Selecciona prioridad.</div>
+          </div>
+        </div>
+
+        <div class="fr2">
+          <div>
+            <label>Coordenada X (−100 a 100)</label>
+            <input type="number" id="pkg-x" placeholder="ej: 5">
+            <div class="field-err" id="err-x">Rango: −100 a 100.</div>
+          </div>
+          <div>
+            <label>Coordenada Y (−100 a 100)</label>
+            <input type="number" id="pkg-y" placeholder="ej: 3">
+            <div class="field-err" id="err-y">Rango: −100 a 100.</div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="registrarPaquete()">Registrar paquete</button>
+          <button class="btn btn-ghost" onclick="limpiarPaquete()">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-hdr amber">Dimensiones calculadas</div>
+        <div id="dim-info" style="color:var(--t3);font-size:12px;font-family:var(--mono);">
+          Selecciona un tipo de paquete para ver dimensiones y peso máximo.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr purple">Cola de paquetes</div>
+        <div style="font-size:34px;font-weight:800;color:var(--acc);font-family:var(--mono);" id="pkg-count">0</div>
+        <div style="color:var(--t3);font-size:11px;margin-top:3px;">paquetes registrados hoy</div>
+        <div style="margin-top:10px;font-size:11.5px;color:var(--t2);" id="pkg-stats-mini"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr red">Últimos registros</div>
+        <div id="recent-pkg" style="font-size:12px;color:var(--t3);">Sin paquetes aún.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ VEHÍCULOS ════════ -->
+<div class="page" id="page-vehiculos">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Panel de vehículos</div>
+      <!-- Datos exactos de PPDatos.py VEHICULOS_CONFIG / PPVehiculos.py -->
+      <div class="ph-sub">Flota: 3 motos · 2 camionetas chicas · 1 camioneta grande.</div>
+    </div>
+  </div>
+  <div class="g3" id="vehicles-grid"></div>
+</div>
+
+<!-- ════════ OPTIMIZAR ════════ -->
+<div class="page" id="page-optimizar">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Optimización de rutas</div>
+      <div class="ph-sub">GA determina asignación de paquetes — ACO determina el orden de visita por vehículo.</div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-bottom:14px;">
+    <!-- GA — parámetros de PPAlgoritmos.py AlgoritmoGenetico -->
+    <div class="card">
+      <div class="card-hdr">Algoritmo Genético (GA)</div>
+      <div style="font-size:11.5px;color:var(--t3);line-height:1.9;margin-bottom:13px;font-family:var(--mono);">
+        Selección torneo (k=3) → Cruce 1 punto (p=0.80) → Mutación (p=0.15)<br>
+        Elitismo: 10% · Fitness: urgencia × 10 − penalización_exceso<br>
+        <span style="color:var(--t2);">f(x) = Σ urgencia·10 − 1000·exceso_kg</span>
+      </div>
+      <div class="fr2" style="margin-bottom:0;">
+        <div>
+          <label>Generaciones (10–500)</label>
+          <input type="number" id="ga-gen" value="150" min="10" max="500">
+        </div>
+        <div>
+          <label>Población (10–200)</label>
+          <input type="number" id="ga-pop" value="60" min="10" max="200">
+        </div>
+      </div>
+    </div>
+
+    <!-- ACO — parámetros de PPAlgoritmos.py ColoniaHormigas -->
+    <div class="card">
+      <div class="card-hdr orange">Colonia de Hormigas (ACO)</div>
+      <div style="font-size:11.5px;color:var(--t3);line-height:1.9;margin-bottom:13px;font-family:var(--mono);">
+        α=1.0 (feromona) · β=2.0 (heurística) · ρ=0.1 (evaporación)<br>
+        Q=100 (depósito) · Inicialización τ₀=1.0<br>
+        <span style="color:var(--t2);">P(i→j) = τ(i,j)^α × η(i,j)^β / Σ(τ×η)</span>
+      </div>
+      <div class="fr2" style="margin-bottom:0;">
+        <div>
+          <label>Hormigas (5–100)</label>
+          <input type="number" id="aco-ants" value="20" min="5" max="100">
+        </div>
+        <div>
+          <label>Iteraciones (10–300)</label>
+          <input type="number" id="aco-iter" value="100" min="10" max="300">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:18px;">
+    <button class="btn btn-primary" onclick="ejecutarOptimizacion()" id="btn-opt" style="padding:11px 36px;font-size:14px;">
+         jecutar GA + ACO
+    </button>
+  </div>
+
+  <div id="opt-result" style="display:none;">
+    <div class="g4" id="opt-stats" style="margin-bottom:16px;"></div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-hdr">Convergencia GA — historial fitness</div>
+        <div class="chart-area"><canvas id="chart-ga"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr orange">Convergencia ACO — distancia mínima</div>
+        <div class="chart-area"><canvas id="chart-aco"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:0;">
+      <div class="card-hdr cyan">Asignaciones por vehículo</div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Vehículo</th><th>Paquetes asignados</th><th>Peso total</th><th>Distancia ACO</th><th>Ruta ID</th></tr></thead>
+          <tbody id="tbody-asig"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ TABLAS ════════ -->
+<div class="page" id="page-tablas">
+  <div class="ph">
+    <div><div class="ph-title">Tablas del día</div>
+    <div class="ph-sub">Paquetes iniciales, asignados a ruta y conservados para mañana.</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tab-ini',this)">Paquetes iniciales</div>
+    <div class="tab" onclick="switchTab('tab-ent',this)">Entregados / En ruta</div>
+    <div class="tab" onclick="switchTab('tab-con',this)">Conservados</div>
+  </div>
+
+  <div class="tab-panel active" id="tab-ini">
+    <div class="card">
+      <div class="tw">
+        <table>
+          <thead><tr><th>ID</th><th>Peso (kg)</th><th>Tipo</th><th>Volumen (m³)</th><th>Ubicación</th><th>Dist. almacén</th><th>Prioridad</th><th>Estado</th></tr></thead>
+          <tbody id="tbody-ini"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel" id="tab-ent">
+    <div class="card">
+      <div class="tw">
+        <table>
+          <thead><tr><th>ID</th><th>Vehículo</th><th>Ruta</th><th>Distancia (km)</th><th>Hora salida</th><th>Estado</th></tr></thead>
+          <tbody id="tbody-ent"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="tab-panel" id="tab-con">
+    <div class="card">
+      <div class="tw">
+        <table>
+          <thead><tr><th>ID</th><th>Razón conservación</th><th>Dist. almacén</th><th>Prioridad</th></tr></thead>
+          <tbody id="tbody-con"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ PLANO ════════ -->
+<div class="page" id="page-plano">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Plano cartesiano</div>
+      <div class="ph-sub">Paquetes, rutas y vehículos. Almacén en (0,0). Haz clic en un punto para detalles.</div>
+    </div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost" onclick="drawCanvas()" style="font-size:12px;">↺ Redibujar</button>
+    </div>
+  </div>
+  <div class="card" style="padding:12px;">
+    <canvas id="canvas-main" height="520"></canvas>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#fff;border:2px solid var(--t3)"></div>Almacén (0,0)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--rojo)"></div>Prioridad Rojo</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--azul)"></div>Prioridad Azul</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--verde)"></div>Prioridad Verde</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--t3)"></div>Sin ruta</div>
+      <div class="leg-item"><div class="leg-line" style="background:var(--azul)"></div>Ruta moto</div>
+      <div class="leg-item"><div class="leg-line" style="background:var(--purple)"></div>Ruta cam. chica</div>
+      <div class="leg-item"><div class="leg-line" style="background:var(--amber)"></div>Ruta cam. grande</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ SEMANAL ════════ -->
+<div class="page" id="page-semanal">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Resumen semanal</div>
+      <div class="ph-sub">Estadísticas acumuladas — se reinician al cerrar el sistema (PPDatos.borrar_todo).</div>
+    </div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost" onclick="exportarJSON()" style="font-size:12px;">⬇ Exportar JSON</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;">
+    <div class="tw">
+      <table class="week-table">
+        <thead>
+          <tr>
+            <th>Métrica</th>
+            <th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th>
+            <th>Viernes</th><th>Sábado</th><th>Domingo</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-sem"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr cyan">Paquetes por día</div>
+      <div class="chart-area"><canvas id="chart-sem"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr purple">Estadísticas del día activo</div>
+      <div id="stats-dia" style="font-size:12.5px;color:var(--t3);">Sin datos del día activo.</div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div><!-- /app -->
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   CONSTANTES MIRROR DE PYTHON
+   → PPFormularios.py DIMENSIONES + peso_max_kg
+   → PPDatos.py VEHICULOS_CONFIG (capacidades reales)
+   → PPFormularios.py DIAS_ENTREGA
+   → PPTablas.py RAZONES_CONSERVACION
+══════════════════════════════════════════════════════ */
+const DIMENSIONES = {
+  // PPFormularios.py TipoPaquete + DIMENSIONES dict
+  'bolsa':      { largo:30, ancho:20, alto:10, vol:0.006, pesoMax:5.0 },
+  'caja-chica': { largo:30, ancho:30, alto:30, vol:0.027, pesoMax:15.0 },
+  'caja-mediana':{ largo:50,ancho:40, alto:30, vol:0.060, pesoMax:40.0 },
+  'caja-grande':{ largo:80, ancho:60, alto:50, vol:0.240, pesoMax:200.0 },
+};
+
+const TIPO_LABEL = {
+  bolsa:'Bolsa pequeña','caja-chica':'Caja chica',
+  'caja-mediana':'Caja mediana','caja-grande':'Caja grande',
+};
+
+// PPDatos.py VEHICULOS_CONFIG — capacidades exactas
+const VEHICULOS_INICIAL = [
+  { id:'M1',  nombre:'Moto 1',           tipo:'moto',  cap:15,   distMax:20,  comb:40, vel:60, vol:0.05,  costo:1.5 },
+  { id:'M2',  nombre:'Moto 2',           tipo:'moto',  cap:15,   distMax:20,  comb:40, vel:60, vol:0.05,  costo:1.5 },
+  { id:'M3',  nombre:'Moto 3',           tipo:'moto',  cap:15,   distMax:20,  comb:40, vel:60, vol:0.05,  costo:1.5 },
+  { id:'CC1', nombre:'Camioneta Ch. 1',  tipo:'chica', cap:500,  distMax:80,  comb:12, vel:80, vol:2.0,   costo:4.0 },
+  { id:'CC2', nombre:'Camioneta Ch. 2',  tipo:'chica', cap:500,  distMax:80,  comb:12, vel:80, vol:2.0,   costo:4.0 },
+  { id:'CG1', nombre:'Camioneta Grande', tipo:'grande',cap:2000, distMax:200, comb:8,  vel:90, vol:10.0,  costo:7.0 },
+];
+
+// PPFormularios.py Prioridad urgencia scores
+const URGENCIA = { rojo:3, azul:2, verde:1 };
+const PRI_LABEL = { rojo:' Rojo', azul:' Azul', verde:' Verde' };
+const PRI_BADGE = { rojo:'b-red', azul:'b-blue', verde:'b-green' };
+const PRI_DIAS  = { rojo:'Inmediata', azul:'1–3 días', verde:'1–7 días' };
+
+// PPTablas.py RAZONES_CONSERVACION
+const RAZONES = {
+  'muy_lejos':      'Muy lejos',
+  'exceso_peso':    'Exceso de peso',
+  'exceso_vol':     'Exceso de volumen',
+  'baja_prioridad': 'Baja prioridad',
+  'sin_vehiculo':   'Sin vehículo disponible',
+  'eficiencia':     'Baja eficiencia logística',
+};
+
+// PPVehiculos.py TipoVehiculo → colores canvas
+const VEH_COLORS = { moto:'#4da6ff', chica:'#a78bfa', grande:'#fbbf24' };
+
+/* ══════════════════════════════════════════════════ */
+/*  ESTADO GLOBAL — espejo de PPDatos.DatosSistema   */
+/* ══════════════════════════════════════════════════ */
+const S = {
+  diaActivo:   null,
+  actividad:   null,
+  pkgCounter:  0,
+  paquetes:    [],
+  entregados:  [],
+  conservados: [],
+  rutas:       [],
+  vehiculos:   inicializarVehiculos(),
+  semanal:     {},  // dia → [iniciales,entregados,conservados,distancia,combustible,costo]
+  charts:      { ga:null, aco:null, sem:null },
+  estadDia:    { combustible:0, distancia:0, costo:0, tiempo:0 },
+};
+
+// Inicializa los 7 días en blanco
+['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].forEach(d => {
+  S.semanal[d] = [0,0,0,0,0,0];
+});
+
+function inicializarVehiculos() {
+  return VEHICULOS_INICIAL.map(v => ({
+    ...v,
+    pesoActual: 0,
+    volActual:  0,
+    paquetes:   [],
+    disponible: true,
+    distRec:    0,
+  }));
+}
+
+/* ══════════════════════════════════════════ */
+/*  NAVEGACIÓN                                */
+/* ══════════════════════════════════════════ */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const ni = document.getElementById('nav-'+id);
+  if (ni) ni.classList.add('active');
+  if (id==='plano')    drawCanvas();
+  if (id==='semanal')  renderSemanal();
+  if (id==='vehiculos')renderVehiculos();
+  if (id==='tablas')   renderTablas();
+}
+function switchTab(id, el) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+/* ══════════════════════════════════════════ */
+/*  INICIO / DÍA DE TRABAJO                  */
+/*  PPFormularios.py FormularioDia.validar()  */
+/* ══════════════════════════════════════════ */
+function iniciarDia() {
+  const dia = document.getElementById('sel-dia').value;
+  const act = document.getElementById('sel-actividad').value;
+  let ok = true;
+  ['err-dia','err-act'].forEach(id=>{ document.getElementById(id).style.display='none'; });
+
+  if (!dia) { document.getElementById('err-dia').style.display='block'; ok=false; }
+  if (!act) { document.getElementById('err-act').style.display='block'; ok=false; }
+  if (!ok) return;
+
+  // Espejo de PPDatos.iniciar_dia: conservados pasan al nuevo día
+  if (S.diaActivo && S.diaActivo !== dia) guardarResumenDia();
+
+  const conservadosAnt = [...S.conservados];
+  S.paquetes    = conservadosAnt.map(p => ({ ...p, estado:'pendiente' }));
+  S.entregados  = [];
+  S.conservados = [];
+  S.rutas       = [];
+  S.vehiculos   = inicializarVehiculos();
+  S.estadDia    = { combustible:0, distancia:0, costo:0, tiempo:0 };
+
+  S.diaActivo = dia;
+  S.actividad = act;
+
+  // Header
+  document.getElementById('hdr-day').textContent = dia;
+  document.getElementById('hdr-dot').classList.add('on');
+  document.getElementById('hdr-status').textContent = 'Activo';
+  document.getElementById('btn-borrar').style.display = '';
+
+  // Desbloquear navegación
+  const unlock = id => {
+    const el = document.getElementById('nav-'+id);
+    el.classList.remove('locked');
+  };
+  unlock('vehiculos'); unlock('plano'); unlock('optimizar');
+  if (act==='paquetes'||act==='ambas') unlock('paquetes');
+  if (act==='entregas'||act==='ambas') { unlock('tablas'); }
+
+  const labels = { paquetes:'Registro de paquetes', entregas:'Realizar entregas', ambas:'Ambas' };
+  const alEl = document.getElementById('alert-inicio');
+  alEl.className = 'alert al-success';
+  alEl.style.display = 'block';
+  alEl.innerHTML = `✓ Día <b>${dia}</b> iniciado. Actividad: <b>${labels[act]}</b>.`
+    + (conservadosAnt.length ? ` ${conservadosAnt.length} paquetes conservados importados.` : '');
+
+  // Badge & contador
+  actualizarBadgePkg();
+  generarIdPaquete();
+  renderVehiculos();
+}
+
+function guardarResumenDia() {
+  if (!S.diaActivo) return;
+  const dist = +S.estadDia.distancia.toFixed(1);
+  const comb = S.vehiculos.reduce((a,v) => a + (v.distRec>0 ? v.distRec/v.comb : 0), 0);
+  S.semanal[S.diaActivo] = [
+    S.paquetes.length,
+    S.entregados.length,
+    S.conservados.length,
+    dist,
+    +comb.toFixed(2),
+    +S.estadDia.costo.toFixed(2),
+  ];
+}
+
+function borrarTodo() {
+  if (!confirm('¿Borrar todos los datos del sistema? (PPDatos.borrar_todo)')) return;
+  S.diaActivo=null; S.actividad=null; S.pkgCounter=0;
+  S.paquetes=[]; S.entregados=[]; S.conservados=[]; S.rutas=[];
+  S.vehiculos=inicializarVehiculos();
+  S.estadDia={combustible:0,distancia:0,costo:0,tiempo:0};
+  ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].forEach(d=>{ S.semanal[d]=[0,0,0,0,0,0]; });
+  document.getElementById('hdr-day').textContent='—';
+  document.getElementById('hdr-dot').classList.remove('on');
+  document.getElementById('hdr-status').textContent='Sin iniciar';
+  document.getElementById('alert-inicio').style.display='none';
+  document.getElementById('btn-borrar').style.display='none';
+  document.getElementById('pkg-count').textContent='0';
+  document.getElementById('pkg-stats-mini').textContent='';
+  document.getElementById('recent-pkg').textContent='Sin paquetes aún.';
+  ['paquetes','vehiculos','optimizar','tablas','plano'].forEach(id=>{
+    document.getElementById('nav-'+id).classList.add('locked');
+  });
+  document.getElementById('opt-result').style.display='none';
+  actualizarBadgePkg();
+  renderSemanal();
+  showPage('inicio');
+}
+
+/* ══════════════════════════════════════════ */
+/*  PAQUETES                                  */
+/*  PPFormularios.py FormularioPaquete        */
+/* ══════════════════════════════════════════ */
+function generarIdPaquete() {
+  S.pkgCounter++;
+  document.getElementById('pkg-id').value = 'PKG-' + String(S.pkgCounter).padStart(3,'0');
+}
+
+function onTipoChange() {
+  const tipo = document.getElementById('pkg-tipo').value;
+  const box = document.getElementById('dim-info');
+  if (!tipo) { box.innerHTML='<span style="color:var(--t3)">Selecciona un tipo.</span>'; return; }
+  const d = DIMENSIONES[tipo];
+  box.innerHTML = `
+    <div class="dim-box">
+      <div class="dim-row"><span>Largo</span><span>${d.largo} cm</span></div>
+      <div class="dim-row"><span>Ancho</span><span>${d.ancho} cm</span></div>
+      <div class="dim-row"><span>Alto</span><span>${d.alto} cm</span></div>
+      <div class="dim-row"><span>Volumen</span><span style="color:var(--amber)">${d.vol} m³</span></div>
+      <div class="dim-row"><span>Peso máximo</span><span style="color:var(--verde)">${d.pesoMax} kg</span></div>
+    </div>`;
+  validarPeso();
+}
+
+function validarPeso() {
+  const tipo = document.getElementById('pkg-tipo').value;
+  const peso = parseFloat(document.getElementById('pkg-peso').value);
+  const err  = document.getElementById('err-peso');
+  const inp  = document.getElementById('pkg-peso');
+  if (!tipo || isNaN(peso)) { err.style.display='none'; inp.classList.remove('input-err'); return; }
+  const max = DIMENSIONES[tipo].pesoMax;
+  if (peso<=0 || peso>max) {
+    err.textContent = `Peso inválido. Máximo para ${TIPO_LABEL[tipo]}: ${max} kg.`;
+    err.style.display='block'; inp.classList.add('input-err');
+  } else {
+    err.style.display='none'; inp.classList.remove('input-err');
+  }
+}
+
+function registrarPaquete() {
+  // PPFormularios.py _validar_* functions
+  const tipo  = document.getElementById('pkg-tipo').value;
+  const peso  = parseFloat(document.getElementById('pkg-peso').value);
+  const prio  = document.getElementById('pkg-prioridad').value;
+  const x     = parseFloat(document.getElementById('pkg-x').value);
+  const y     = parseFloat(document.getElementById('pkg-y').value);
+  const id    = document.getElementById('pkg-id').value;
+
+  let ok = true;
+  const setErr=(id,msg,show)=>{ const e=document.getElementById(id); e.textContent=msg||e.textContent; e.style.display=show?'block':'none'; };
+
+  setErr('err-tipo','',!tipo); if(!tipo) ok=false;
+  if (!tipo||isNaN(peso)||peso<=0||peso>DIMENSIONES[tipo]?.pesoMax) { setErr('err-peso',`Peso inválido. Máx: ${tipo?DIMENSIONES[tipo].pesoMax:'?'} kg`,true); ok=false; } else setErr('err-peso','',false);
+  setErr('err-prio','',!prio); if(!prio) ok=false;
+  if (isNaN(x)||x<-100||x>100) { setErr('err-x','Coordenada X fuera de rango (−100 a 100).',true); ok=false; } else setErr('err-x','',false);
+  if (isNaN(y)||y<-100||y>100) { setErr('err-y','Coordenada Y fuera de rango (−100 a 100).',true); ok=false; } else setErr('err-y','',false);
+  if (!ok) return;
+
+  const dims = DIMENSIONES[tipo];
+  const dist = Math.sqrt(x*x+y*y);
+
+  const pkg = {
+    id, tipo, peso: +peso.toFixed(2), prioridad:prio,
+    x, y,
+    vol: dims.vol,
+    largo:dims.largo, ancho:dims.ancho, alto:dims.alto,
+    estado: 'pendiente',
+    distancia: +dist.toFixed(2),
+    urgencia: URGENCIA[prio],
+  };
+
+  S.paquetes.push(pkg);
+  limpiarPaquete();
+  generarIdPaquete();
+  actualizarBadgePkg();
+  actualizarRecentPkg(pkg);
+  renderTablas();
+}
+
+function limpiarPaquete() {
+  ['pkg-tipo','pkg-prioridad'].forEach(id=>{ document.getElementById(id).value=''; });
+  ['pkg-peso','pkg-x','pkg-y'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('dim-info').innerHTML='<span style="color:var(--t3)">Selecciona un tipo de paquete para ver dimensiones.</span>';
+  ['err-tipo','err-peso','err-prio','err-x','err-y'].forEach(id=>{ document.getElementById(id).style.display='none'; });
+  ['pkg-peso','pkg-x','pkg-y'].forEach(id=>{ document.getElementById(id).classList.remove('input-err'); });
+}
+
+function actualizarBadgePkg() {
+  const n = S.paquetes.length;
+  const badge = document.getElementById('badge-pkg');
+  badge.textContent = n;
+  badge.style.display = n>0 ? '' : 'none';
+  document.getElementById('pkg-count').textContent = n;
+  const r = S.paquetes.reduce((a,p)=>{ a[p.prioridad]=(a[p.prioridad]||0)+1; return a; },{});
+  document.getElementById('pkg-stats-mini').innerHTML = Object.entries(r).map(([k,v])=>
+    `<span class="badge ${PRI_BADGE[k]}" style="margin-right:5px;">${PRI_LABEL[k]}: ${v}</span>`
+  ).join('');
+}
+
+function actualizarRecentPkg(pkg) {
+  const box = document.getElementById('recent-pkg');
+  const rows = S.paquetes.slice(-4).reverse().map(p =>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
+      <span class="mono" style="color:var(--acc)">${p.id}</span>
+      <span>${TIPO_LABEL[p.tipo]}</span>
+      <span style="font-family:var(--mono)">${p.peso}kg</span>
+      <span class="badge ${PRI_BADGE[p.prioridad]}">${PRI_LABEL[p.prioridad]}</span>
+    </div>`
+  ).join('');
+  box.innerHTML = rows || 'Sin paquetes aún.';
+}
+
+/* ══════════════════════════════════════════ */
+/*  VEHÍCULOS                                 */
+/*  PPVehiculos.py clases Vehiculo / Flota    */
+/* ══════════════════════════════════════════ */
+function renderVehiculos() {
+  const grid = document.getElementById('vehicles-grid');
+  grid.innerHTML = '';
+  S.vehiculos.forEach(v => {
+    const pct  = Math.min(100, Math.round((v.pesoActual/v.cap)*100));
+    const col  = VEH_COLORS[v.tipo];
+    const disp = v.disponible;
+    grid.innerHTML += `
+      <div class="v-card vc-${v.tipo}">
+        <div class="v-name">${v.nombre}</div>
+        <div class="v-type">${v.tipo.toUpperCase()} · <span style="color:${disp?'var(--verde)':'var(--rojo)'}">${disp?'Disponible':'En ruta'}</span></div>
+        <div class="v-row"><span>Cap. peso</span><span>${v.cap} kg</span></div>
+        <div class="v-row"><span>Dist. máx.</span><span>${v.distMax} km</span></div>
+        <div class="v-row"><span>Rendimiento</span><span>${v.comb} km/L</span></div>
+        <div class="v-row"><span>Velocidad</span><span>${v.vel} km/h</span></div>
+        <div class="v-row"><span>Vol. máximo</span><span>${v.vol} m³</span></div>
+        <div class="v-row"><span>Costo/km</span><span>$${v.costo}</span></div>
+        <div class="v-row"><span>Carga actual</span><span style="color:${col}">${v.pesoActual.toFixed(1)} kg (${pct}%)</span></div>
+        <div class="cap-bar"><div class="cap-fill" style="width:${pct}%;background:${col};"></div></div>
+      </div>`;
+  });
+}
+
+/* ══════════════════════════════════════════ */
+/*  GA EN JS — espejo de PPAlgoritmos.py      */
+/*  AlgoritmoGenetico.ejecutar()              */
+/* ══════════════════════════════════════════ */
+function gaEjecutar(paquetes, vehiculos, gens, popTam) {
+  const N = paquetes.length;
+  const M = vehiculos.length;
+  const PENALIZACION = 1000;
+  const ELITISMO = Math.max(1, Math.floor(popTam*0.10));
+  const PROB_CRUCE = 0.80;
+  const PROB_MUT   = 0.15;
+  const TORNEO_K   = 3;
+
+  function crearInd() {
+    return paquetes.map(p => {
+      const prob = Math.min(1, 0.4 + URGENCIA[p.prioridad]*0.2);
+      return Math.random()<prob ? Math.floor(Math.random()*M) : -1;
+    });
+  }
+
+  function fitness(ind) {
+    const cargas = new Float64Array(M);
+    const vols   = new Float64Array(M);
+    let f = 0;
+    for (let i=0;i<N;i++) {
+      const p = paquetes[i];
+      const g = ind[i];
+      if (g===-1) { f -= URGENCIA[p.prioridad]*5; continue; }
+      cargas[g] += p.peso; vols[g] += p.vol;
+      f += URGENCIA[p.prioridad]*10;
+    }
+    for (let i=0;i<M;i++) {
+      const v = vehiculos[i];
+      if (cargas[i]>v.cap) f -= PENALIZACION*(cargas[i]-v.cap);
+      if (vols[i]>v.vol)   f -= PENALIZACION*500*(vols[i]-v.vol);
+      if (cargas[i]>0) f += (cargas[i]/v.cap)*20;
+    }
+    return f;
+  }
+
+  function torneo(pop, fits) {
+    let best = -Infinity, bi = 0;
+    for (let i=0;i<TORNEO_K;i++) {
+      const j = Math.floor(Math.random()*pop.length);
+      if (fits[j]>best) { best=fits[j]; bi=j; }
+    }
+    return [...pop[bi]];
+  }
+
+  function cruce(p1,p2) {
+    if (Math.random()>PROB_CRUCE||N<2) return [[...p1],[...p2]];
+    const pt = 1+Math.floor(Math.random()*(N-1));
+    return [[...p1.slice(0,pt),...p2.slice(pt)],[...p2.slice(0,pt),...p1.slice(pt)]];
+  }
+
+  function mutar(ind) {
+    for (let i=0;i<N;i++) {
+      if (Math.random()<PROB_MUT) {
+        ind[i] = ind[i]===-1 ? Math.floor(Math.random()*M)
+               : (Math.random()<0.5 ? -1 : Math.floor(Math.random()*M));
+      }
+    }
+    return ind;
+  }
+
+  let pop = Array.from({length:popTam},crearInd);
+  const hist = [];
+
+  for (let g=0;g<gens;g++) {
+    const fits = pop.map(fitness);
+    const ord  = [...Array(popTam).keys()].sort((a,b)=>fits[b]-fits[a]);
+    hist.push(fits[ord[0]]);
+    const nueva = ord.slice(0,ELITISMO).map(i=>[...pop[i]]);
+    while (nueva.length<popTam) {
+      const [h1,h2] = cruce(torneo(pop,fits),torneo(pop,fits));
+      nueva.push(mutar(h1));
+      if (nueva.length<popTam) nueva.push(mutar(h2));
+    }
+    pop = nueva;
+  }
+
+  const fits  = pop.map(fitness);
+  const bi    = fits.indexOf(Math.max(...fits));
+  const mejor = pop[bi];
+
+  const asig  = {};
+  for (let i=0;i<N;i++) {
+    asig[paquetes[i].id] = mejor[i]>=0 ? vehiculos[mejor[i]].id : null;
+  }
+  return { asig, fitnessHist:hist, fitnessFinal:fits[bi] };
+}
+
+/* ACO en JS — espejo de PPAlgoritmos.py ColoniaHormigas.ejecutar() */
+function acoEjecutar(paquetes, nHormigas, iters) {
+  if (!paquetes.length) return { orden:[], dist:0, hist:[] };
+  const N = paquetes.length+1; // nodo 0 = almacén
+  const ALPHA=1, BETA=2, RHO=0.1, Q=100, TAU0=1;
+
+  const coords = [[0,0], ...paquetes.map(p=>[p.x,p.y])];
+  const dist = Array.from({length:N},(_,i)=>Array.from({length:N},(_,j)=>{
+    const dx=coords[i][0]-coords[j][0], dy=coords[i][1]-coords[j][1];
+    return i===j?0:Math.sqrt(dx*dx+dy*dy);
+  }));
+  let pher = Array.from({length:N},()=>Array(N).fill(TAU0));
+
+  let bestDist=Infinity, bestRuta=[];
+  const hist=[];
+
+  for (let it=0;it<iters;it++) {
+    const rutas=[], longs=[];
+    for (let h=0;h<nHormigas;h++) {
+      const vis=new Set([0]);
+      const ruta=[0];
+      let cur=0;
+      while (vis.size<N) {
+        const cands=[...Array(N).keys()].filter(n=>n>0&&!vis.has(n));
+        if (!cands.length) break;
+        const probs=cands.map(c=>{
+          const d=dist[cur][c];
+          return Math.pow(pher[cur][c],ALPHA)*Math.pow(d>0?1/d:1e6,BETA);
+        });
+        const tot=probs.reduce((a,b)=>a+b,0);
+        let r=Math.random()*tot, acc=0, next=cands[0];
+        for (let k=0;k<cands.length;k++){acc+=probs[k];if(r<=acc){next=cands[k];break;}}
+        ruta.push(next); vis.add(next); cur=next;
+      }
+      ruta.push(0);
+      const len=ruta.reduce((s,n,i)=>i?s+dist[ruta[i-1]][n]:0,0);
+      rutas.push(ruta); longs.push(len);
+      if (len<bestDist){bestDist=len;bestRuta=[...ruta];}
+    }
+    // Evaporación + depósito
+    for (let i=0;i<N;i++) for (let j=0;j<N;j++) pher[i][j]=Math.max(0.001,pher[i][j]*(1-RHO));
+    rutas.forEach((r,ri)=>{ const dep=Q/longs[ri]; for(let k=0;k<r.length-1;k++){pher[r[k]][r[k+1]]+=dep;pher[r[k+1]][r[k]]+=dep;} });
+    hist.push(bestDist);
+  }
+
+  const orden=bestRuta.filter(n=>n>0).map(n=>paquetes[n-1].id);
+  return { orden, dist:+bestDist.toFixed(4), hist };
+}
+
+/* ══════════════════════════════════════════════════
+   FUNCIÓN PRINCIPAL: ejecutarOptimizacion
+   Espejo de PPAlgoritmos.optimizar(sistema)
+══════════════════════════════════════════════════ */
+function ejecutarOptimizacion() {
+  if (S.paquetes.length===0) { alert('No hay paquetes registrados.'); return; }
+  const btn = document.getElementById('btn-opt');
+  btn.textContent='  Ejecutando...'; btn.classList.add('running'); btn.disabled=true;
+
+  setTimeout(()=>{
+    const gens  = Math.max(10,Math.min(500, parseInt(document.getElementById('ga-gen').value)||150));
+    const pop   = Math.max(10,Math.min(200, parseInt(document.getElementById('ga-pop').value)||60));
+    const ants  = Math.max(5, Math.min(100, parseInt(document.getElementById('aco-ants').value)||20));
+    const iters = Math.max(10,Math.min(300, parseInt(document.getElementById('aco-iter').value)||100));
+
+    const pendientes = S.paquetes.filter(p=>p.estado==='pendiente');
+    const vehicDisp  = S.vehiculos.filter(v=>v.disponible);
+
+    // ── Paso 1: GA ──
+    const {asig, fitnessHist, fitnessFinal} = gaEjecutar(pendientes, vehicDisp, gens, pop);
+
+    // ── Paso 2: Agrupar por vehículo y correr ACO ──
+    const porVeh={};
+    pendientes.forEach(p=>{
+      const vid=asig[p.id];
+      if (!vid) {
+        // _determinar_razon_conservacion (PPAlgoritmos.py)
+        let razon='baja_prioridad';
+        const maxDist=Math.max(...vehicDisp.map(v=>v.distMax));
+        const maxCap =Math.max(...vehicDisp.map(v=>v.cap));
+        if (p.distancia>maxDist)  razon='muy_lejos';
+        else if (p.peso>maxCap)   razon='exceso_peso';
+        else if (p.vol>Math.max(...vehicDisp.map(v=>v.vol))) razon='exceso_vol';
+        S.conservados.push({...p, razon, estado:'conservado'});
+        p.estado='conservado';
+      } else {
+        if (!porVeh[vid]) porVeh[vid]=[];
+        porVeh[vid].push(p);
+      }
+    });
+
+    S.entregados=[]; S.rutas=[];
+    const asigData=[];
+    let acoHistGlobal=[];
+    let rutaNum=1;
+
+    Object.entries(porVeh).forEach(([vid, pkgs])=>{
+      const veh=S.vehiculos.find(v=>v.id===vid);
+      // ACO por vehículo
+      const {orden, dist, hist} = acoEjecutar(pkgs, ants, iters);
+      if (hist.length>acoHistGlobal.length) acoHistGlobal=hist;
+
+      const rutaId=`RUTA-${String(rutaNum).padStart(3,'0')}`;
+      const pesoTotal=pkgs.reduce((s,p)=>s+p.peso,0);
+      const now=new Date().toTimeString().slice(0,5);
+
+      pkgs.forEach(p=>{
+        p.estado='entregado';
+        S.entregados.push({
+          ...p, vehiculo:veh.nombre, vehiculoId:vid,
+          ruta:rutaId, distanciaRuta:+dist.toFixed(2),
+          horaSalida:now, estado:'En ruta',
+        });
+      });
+
+      // Actualizar vehículo
+      veh.pesoActual += pesoTotal;
+      veh.volActual  += pkgs.reduce((s,p)=>s+p.vol,0);
+      veh.paquetes.push(...pkgs.map(p=>p.id));
+      veh.distRec    += dist;
+      veh.disponible  = false;
+
+      // Estadísticas del día
+      S.estadDia.distancia   += dist;
+      S.estadDia.combustible += dist/veh.comb;
+      S.estadDia.costo       += dist*veh.costo;
+      S.estadDia.tiempo      += dist/veh.vel;
+
+      S.rutas.push({id:rutaId, vehiculoId:vid, paquetes:pkgs.map(p=>p.id), orden, dist, fitness:fitnessFinal});
+
+      asigData.push({ vehiculo:veh.nombre, tipo:veh.tipo, pkgs:pkgs.length, peso:+pesoTotal.toFixed(1), dist:+dist.toFixed(2), rutaId });
+      rutaNum++;
+    });
+
+    // Guardar en semanal
+    guardarResumenDia();
+
+    // ── Renderizar resultado ──
+    mostrarResultadoOpt(fitnessHist, acoHistGlobal, asigData, fitnessFinal);
+
+    btn.textContent='  Ejecutar GA + ACO'; btn.classList.remove('running'); btn.disabled=false;
+
+    renderTablas();
+    renderVehiculos();
+  }, 1500);
+}
+
+function mostrarResultadoOpt(fitnessHist, acoHist, asigData, fitnessFinal) {
+  document.getElementById('opt-result').style.display='block';
+
+  const eff = S.paquetes.length>0 ? Math.round(S.entregados.length/S.paquetes.length*100) : 0;
+  document.getElementById('opt-stats').innerHTML = `
+    <div class="stat"><div class="stat-lbl">Entregados</div><div class="stat-val" style="color:var(--verde)">${S.entregados.length}</div></div>
+    <div class="stat"><div class="stat-lbl">Conservados</div><div class="stat-val" style="color:var(--amber)">${S.conservados.length}</div></div>
+    <div class="stat"><div class="stat-lbl">Eficiencia</div><div class="stat-val" style="color:var(--acc)">${eff}%</div></div>
+    <div class="stat"><div class="stat-lbl">Fitness GA</div><div class="stat-val" style="color:var(--purple)">${fitnessFinal.toFixed(1)}</div></div>`;
+
+  const chartOpts = (col) => ({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:'#44566e',maxTicksLimit:8,font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(37,48,72,.6)'}},
+      y:{ticks:{color:'#44566e',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(37,48,72,.6)'}},
+    }
+  });
+
+  if (S.charts.ga) S.charts.ga.destroy();
+  S.charts.ga = new Chart(document.getElementById('chart-ga').getContext('2d'),{
+    type:'line',
+    data:{
+      labels: Array.from({length:fitnessHist.length},(_,i)=>i+1),
+      datasets:[{label:'Fitness',data:fitnessHist,borderColor:'#4da6ff',backgroundColor:'rgba(77,166,255,.07)',borderWidth:1.5,fill:true,pointRadius:0,tension:.4}]
+    },
+    options: chartOpts('#4da6ff')
+  });
+
+  if (S.charts.aco) S.charts.aco.destroy();
+  S.charts.aco = new Chart(document.getElementById('chart-aco').getContext('2d'),{
+    type:'line',
+    data:{
+      labels: Array.from({length:acoHist.length},(_,i)=>i+1),
+      datasets:[{label:'Distancia',data:acoHist,borderColor:'#fb923c',backgroundColor:'rgba(251,146,60,.07)',borderWidth:1.5,fill:true,pointRadius:0,tension:.4}]
+    },
+    options: chartOpts('#fb923c')
+  });
+
+  // Tabla de asignaciones
+  const tbody = document.getElementById('tbody-asig');
+  tbody.innerHTML = asigData.length===0
+    ? '<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:16px">Sin asignaciones</td></tr>'
+    : asigData.map(a=>`
+      <tr>
+        <td><span style="font-size:10px;color:var(--t3)">${a.tipo.toUpperCase()}</span><br><b>${a.vehiculo}</b></td>
+        <td class="mono">${a.pkgs}</td>
+        <td class="mono">${a.peso} kg</td>
+        <td class="mono">${a.dist} km</td>
+        <td class="mono">${a.rutaId}</td>
+      </tr>`).join('');
+}
+
+/* ══════════════════════════════════════════ */
+/*  TABLAS                                    */
+/*  PPTablas.py GestorTablas                  */
+/* ══════════════════════════════════════════ */
+function renderTablas() {
+  // Tabla iniciales (PPTablas.TablaIniciales)
+  const ti = document.getElementById('tbody-ini');
+  ti.innerHTML = S.paquetes.length===0
+    ? '<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:18px">Sin paquetes</td></tr>'
+    : S.paquetes.map(p=>`
+      <tr>
+        <td class="mono">${p.id}</td>
+        <td class="mono">${p.peso}</td>
+        <td>${TIPO_LABEL[p.tipo]||p.tipo}</td>
+        <td class="mono">${p.vol}</td>
+        <td class="mono">(${p.x}, ${p.y})</td>
+        <td class="mono">${p.distancia} km</td>
+        <td><span class="badge ${PRI_BADGE[p.prioridad]}">${PRI_LABEL[p.prioridad]}</span><br><span style="font-size:10px;color:var(--t3)">${PRI_DIAS[p.prioridad]}</span></td>
+        <td><span class="badge ${p.estado==='entregado'?'b-green':p.estado==='conservado'?'b-amber':'b-gray'}">${p.estado}</span></td>
+      </tr>`).join('');
+
+  // Tabla entregados (PPTablas.TablaEntregados)
+  const te = document.getElementById('tbody-ent');
+  te.innerHTML = S.entregados.length===0
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:18px">Sin entregas asignadas</td></tr>'
+    : S.entregados.map(p=>`
+      <tr>
+        <td class="mono">${p.id}</td>
+        <td>${p.vehiculo}</td>
+        <td class="mono">${p.ruta}</td>
+        <td class="mono">${p.distanciaRuta} km</td>
+        <td class="mono">${p.horaSalida||'—'}</td>
+        <td><span class="badge b-blue">${p.estado}</span></td>
+      </tr>`).join('');
+
+  // Tabla conservados (PPTablas.TablaConservados)
+  const tc = document.getElementById('tbody-con');
+  tc.innerHTML = S.conservados.length===0
+    ? '<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:18px">Sin paquetes conservados</td></tr>'
+    : S.conservados.map(p=>`
+      <tr>
+        <td class="mono">${p.id}</td>
+        <td>${RAZONES[p.razon]||p.razon}</td>
+        <td class="mono">${p.distancia} km</td>
+        <td><span class="badge ${PRI_BADGE[p.prioridad]}">${PRI_LABEL[p.prioridad]}</span></td>
+      </tr>`).join('');
+}
+
+/* ══════════════════════════════════════════ */
+/*  PLANO CARTESIANO                          */
+/* ══════════════════════════════════════════ */
+function drawCanvas() {
+  const canvas = document.getElementById('canvas-main');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth;
+  const H = 520;
+  canvas.width = W; canvas.height = H;
+
+  const pad=52, range=25;
+  const sx = x => pad + ((x+range)/(range*2))*(W-pad*2);
+  const sy = y => H-pad - ((y+range)/(range*2))*(H-pad*2);
+
+  // Fondo
+  ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='#131922'; ctx.lineWidth=1;
+  for (let i=-range;i<=range;i+=5) {
+    ctx.beginPath(); ctx.moveTo(sx(i),pad); ctx.lineTo(sx(i),H-pad); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,sy(i)); ctx.lineTo(W-pad,sy(i)); ctx.stroke();
+  }
+
+  // Ejes
+  ctx.strokeStyle='#253048'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(sx(-range),sy(0)); ctx.lineTo(sx(range),sy(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx(0),sy(-range)); ctx.lineTo(sx(0),sy(range)); ctx.stroke();
+
+  // Labels ejes
+  ctx.fillStyle='#44566e'; ctx.font='10px JetBrains Mono'; ctx.textAlign='center';
+  for (let i=-20;i<=20;i+=5) {
+    if(i!==0){
+      ctx.fillText(i,sx(i),sy(0)+14);
+      ctx.textAlign='right';
+      ctx.fillText(i,sx(0)-6,sy(i)+3);
+      ctx.textAlign='center';
+    }
+  }
+
+  // Rutas por vehículo
+  const entIds = new Set(S.entregados.map(p=>p.id));
+  const vehMap={};
+  S.entregados.forEach(p=>{
+    if(!vehMap[p.vehiculoId]) vehMap[p.vehiculoId]=[];
+    vehMap[p.vehiculoId].push(p);
+  });
+
+  S.vehiculos.forEach(v=>{
+    const pkgs = vehMap[v.id];
+    if(!pkgs||!pkgs.length) return;
+    const col=VEH_COLORS[v.tipo];
+    ctx.strokeStyle=col; ctx.lineWidth=1.5;
+    ctx.setLineDash([5,3]);
+    ctx.beginPath(); ctx.moveTo(sx(0),sy(0));
+    pkgs.forEach(p=>ctx.lineTo(sx(p.x),sy(p.y)));
+    ctx.lineTo(sx(0),sy(0));
+    ctx.stroke(); ctx.setLineDash([]);
+  });
+
+  // Paquetes
+  const pkgColors={rojo:'#f05252',azul:'#4da6ff',verde:'#34d399'};
+  S.paquetes.forEach(p=>{
+    const cx=sx(p.x), cy=sy(p.y);
+    const col = entIds.has(p.id) ? pkgColors[p.prioridad] : '#44566e';
+    ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2);
+    ctx.fillStyle=col+'22'; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
+
+    if (!entIds.has(p.id)) {
+      ctx.strokeStyle='#44566e'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(cx-4,cy-4); ctx.lineTo(cx+4,cy+4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+4,cy-4); ctx.lineTo(cx-4,cy+4); ctx.stroke();
+    }
+
+    ctx.fillStyle='#dde6f5'; ctx.font='9px JetBrains Mono'; ctx.textAlign='center';
+    ctx.fillText(p.id.replace('PKG-','#'),cx,cy-10);
+  });
+
+  // Almacén
+  ctx.beginPath(); ctx.arc(sx(0),sy(0),9,0,Math.PI*2);
+  ctx.fillStyle='#fff'; ctx.fill();
+  ctx.strokeStyle='#44566e'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#070a0f'; ctx.font='bold 9px JetBrains Mono'; ctx.textAlign='center';
+  ctx.fillText('A',sx(0),sy(0)+3);
+
+  // Leyenda de rutas
+  let lx = pad, ly = H-12;
+  S.vehiculos.forEach(v=>{
+    if (vehMap[v.id]&&vehMap[v.id].length) {
+      const col=VEH_COLORS[v.tipo];
+      ctx.fillStyle=col;
+      ctx.fillRect(lx,ly-5,16,2);
+      ctx.fillStyle='#7e8fa8'; ctx.font='9px JetBrains Mono'; ctx.textAlign='left';
+      ctx.fillText(v.nombre,lx+20,ly);
+      lx+=100;
+    }
+  });
+}
+
+/* ══════════════════════════════════════════ */
+/*  RESUMEN SEMANAL                           */
+/*  PPDatos.get_resumen_semanal()             */
+/* ══════════════════════════════════════════ */
+function renderSemanal() {
+  const dias = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const metricas = [
+    ['Iniciales',     d=>S.semanal[d][0]],
+    ['Entregados',    d=>S.semanal[d][1]],
+    ['Conservados',   d=>S.semanal[d][2]],
+    ['Distancia (km)',d=>S.semanal[d][3]],
+    ['Combustible (L)',d=>S.semanal[d][4]],
+    ['Costo ($)',     d=>S.semanal[d][5]],
+  ];
+
+  const tbody=document.getElementById('tbody-sem');
+  tbody.innerHTML=metricas.map(([lbl,fn])=>`
+    <tr>
+      <td style="color:var(--t3);font-family:var(--mono);font-size:11px;">${lbl}</td>
+      ${dias.map(d=>`<td style="font-family:var(--mono);font-size:12px;color:${fn(d)?'var(--t1)':'var(--t3)'}">${fn(d)||'—'}</td>`).join('')}
+    </tr>`).join('');
+
+  if (S.charts.sem) { S.charts.sem.destroy(); S.charts.sem=null; }
+  S.charts.sem = new Chart(document.getElementById('chart-sem').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels: dias.map(d=>d.slice(0,3)),
+      datasets:[
+        {label:'Iniciales',  data:dias.map(d=>S.semanal[d][0]), backgroundColor:'rgba(77,166,255,.55)',  borderColor:'#4da6ff', borderWidth:1},
+        {label:'Entregados', data:dias.map(d=>S.semanal[d][1]), backgroundColor:'rgba(52,211,153,.55)',  borderColor:'#34d399', borderWidth:1},
+        {label:'Conservados',data:dias.map(d=>S.semanal[d][2]), backgroundColor:'rgba(251,191,36,.55)',  borderColor:'#fbbf24', borderWidth:1},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#44566e',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(37,48,72,.5)'}},
+        y:{ticks:{color:'#44566e',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(37,48,72,.5)'}},
+      }
+    }
+  });
+
+  // Estadísticas del día activo
+  const box = document.getElementById('stats-dia');
+  if (!S.diaActivo) { box.innerHTML='<span style="color:var(--t3)">Sin día activo.</span>'; return; }
+  box.innerHTML = `
+    <div style="display:grid;gap:8px;">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--t3)">Día</span>
+        <span style="font-family:var(--mono);color:var(--acc)">${S.diaActivo}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--t3)">Distancia total</span>
+        <span style="font-family:var(--mono)">${S.estadDia.distancia.toFixed(1)} km</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--t3)">Combustible</span>
+        <span style="font-family:var(--mono)">${S.estadDia.combustible.toFixed(2)} L</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--t3)">Costo operativo</span>
+        <span style="font-family:var(--mono)">$${S.estadDia.costo.toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;">
+        <span style="color:var(--t3)">Tiempo estimado</span>
+        <span style="font-family:var(--mono)">${S.estadDia.tiempo.toFixed(2)} h</span>
+      </div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════ */
+/*  EXPORTAR JSON — PPDatos.exportar_json()   */
+/* ══════════════════════════════════════════ */
+function exportarJSON() {
+  const datos = {
+    exportado_en: new Date().toISOString(),
+    dia_actual: S.diaActivo,
+    actividad: S.actividad,
+    paquetes_iniciales: S.paquetes,
+    paquetes_entregados: S.entregados,
+    paquetes_conservados: S.conservados,
+    rutas: S.rutas,
+    resumen_semanal: Object.entries(S.semanal).map(([dia,v])=>({
+      dia, iniciales:v[0], entregados:v[1], conservados:v[2],
+      distancia_km:v[3], combustible_l:v[4], costo_total:v[5]
+    })),
+    estadisticas_dia: S.estadDia,
+  };
+  const blob = new Blob([JSON.stringify(datos,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `SIGOE_${S.diaActivo||'sin_dia'}_${Date.now()}.json`;
+  a.click();
+}
+
+/* ══════════════════════════════════════════ */
+/*  INIT                                      */
+/* ══════════════════════════════════════════ */
+renderSemanal();
+</script>
+</body>
+</html>
